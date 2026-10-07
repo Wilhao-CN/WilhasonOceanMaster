@@ -16,7 +16,7 @@ Produced and continuously maintained by the NOF Innovation & Entrepreneurship Te
 
 ## 开源协议 / License
 
-[MIT License](LICENSE) — 可自由使用、修改与分发（含商业用途），须保留版权声明。
+XXX
 
 ## 引用 / Citation
 
