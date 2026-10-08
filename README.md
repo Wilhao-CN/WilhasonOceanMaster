@@ -9,7 +9,7 @@ Produced and continuously maintained by the NOF Innovation & Entrepreneurship Te
 
 | 目录 | 内容 |
 | --- | --- |
-| `digital_twin/` | 数字孪生代码 / 模型（Digital twin code & model） |
+| `digital_twin/` | 数字孪生环境包：可运行仿真程序 V1（Windows x64），见其 [README](digital_twin/README.md) / Digital twin environment: runnable simulation package V1 |
 | `docs/` | 通信协议等文档（Communication protocol & docs） |
 | `parameters/` | 完整动力学参数（Complete hydrodynamic parameters） |
 | `usv/` | 对应真实 USV 资料（Real USV materials） |
