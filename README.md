@@ -10,13 +10,22 @@ Produced and continuously maintained by the NOF Innovation & Entrepreneurship Te
 | 目录 | 内容 |
 | --- | --- |
 | `digital_twin/` | 数字孪生环境包：可运行仿真程序 V1（Windows x64），见其 [README](digital_twin/README.md) / Digital twin environment: runnable simulation package V1 |
+| `LandStation/` | 精简版地面站源码包 LandStation-Lite v1.0.0（GPL-3.0），见其 [README](LandStation/README.md) / Ground station source release |
 | `docs/` | 通信协议等文档（Communication protocol & docs） |
 | `parameters/` | 完整动力学参数（Complete hydrodynamic parameters） |
 | `usv/` | 对应真实 USV 资料（Real USV materials） |
 
 ## 开源协议 / License
 
-XXX
+仓库骨架采用 **MIT License**，完整条款见 [LICENSE](LICENSE)。
+The repository skeleton is released under the MIT License (see [LICENSE](LICENSE)).
+
+各发布包**自带独立许可**，以包内 `LICENSE` 为准：
+
+- `LandStation/` 地面站源码包：**GPL-3.0**（依赖 PyQt5 的 GPL 授权，详见其 [README](LandStation/README.md)）
+- `digital_twin/` 数字孪生环境包：见包内说明
+
+Each release package carries its own license; see the `LICENSE` file inside each package.
 
 ## 引用 / Citation
 
