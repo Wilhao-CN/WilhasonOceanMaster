@@ -1,0 +1,26 @@
+# ============================================================
+# .gitignore · WilhasonOceanMaster（发布仓库）
+#   仓库结构遵循根 README 的目录约定：
+#     digital_twin/  数字孪生环境包（可运行程序）
+#     docs/ parameters/ usv/  骨架文档
+#   除下列放行项外，根目录一切默认不入库
+#   （Unity 源码、Library、Build_M5、Backups、MapCaptures 底图、
+#     IDE 文件、其余散落文件均不入库）。
+# ============================================================
+
+# ---------- 根目录下一切默认不入库 ----------
+/*
+# ---------- 放行：仓库骨架与本文件 ----------
+!/.gitignore
+!/README.md
+!/LICENSE
+!/digital_twin/
+!/docs/
+!/parameters/
+!/usv/
+
+# ---------- 例外排除 ----------
+# Unity 官方 DoNotShip 调试残留（含本机私有路径，不随包发布）
+digital_twin/Build_GCS_Compatible/*_BurstDebugInformation_DoNotShip/
+# 参数备份
+*.bak

@@ -1,0 +1,29 @@
+{
+    "schema": "digitaltwin/params/v1",
+    "values": [
+        {
+            "key": "gnss.lat0",
+            "value": 1.0
+        },
+        {
+            "key": "gnss.lon0",
+            "value": 1.0
+        },
+        {
+            "key": "gnss.top",
+            "value": 1.0004491806030274
+        },
+        {
+            "key": "gnss.bottom",
+            "value": 0.9995508193969727
+        },
+        {
+            "key": "gnss.left",
+            "value": 0.9995507597923279
+        },
+        {
+            "key": "gnss.right",
+            "value": 1.0004491806030274
+        }
+    ]
+}

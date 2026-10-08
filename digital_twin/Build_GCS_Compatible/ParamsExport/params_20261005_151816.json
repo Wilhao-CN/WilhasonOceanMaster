@@ -1,0 +1,57 @@
+{
+    "schema": "digitaltwin/params/v1",
+    "values": [
+        {
+            "key": "usv.M",
+            "value": 24.0
+        },
+        {
+            "key": "usv.I",
+            "value": 1.7599999904632569
+        },
+        {
+            "key": "usv.Xu",
+            "value": 0.7225000262260437
+        },
+        {
+            "key": "usv.Yv",
+            "value": 0.8896999955177307
+        },
+        {
+            "key": "usv.Nr",
+            "value": 1.899999976158142
+        },
+        {
+            "key": "usv.MIN_Tu",
+            "value": -10.0
+        },
+        {
+            "key": "usv.MAX_Tu",
+            "value": 30.0
+        },
+        {
+            "key": "usv.MIN_Tr",
+            "value": -15.0
+        },
+        {
+            "key": "usv.MAX_Tr",
+            "value": 15.0
+        },
+        {
+            "key": "dock.minTu",
+            "value": -30.0
+        },
+        {
+            "key": "dock.maxTu",
+            "value": 30.0
+        },
+        {
+            "key": "dock.minTr",
+            "value": -15.0
+        },
+        {
+            "key": "dock.maxTr",
+            "value": 15.0
+        }
+    ]
+}
