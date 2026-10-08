@@ -1,54 +1,71 @@
-# 精简版地面站 · LandStation-Lite v1.0.0（源码发布包）
+# LandStation-Lite v1.0.0 · 地面站运行版
 
-> Ground Station for USV Twin-Vessel Cooperative Control — LandStation-Lite v1.0.0 Source Release
+**精简版无人船地面站 —— 免安装可运行程序（Windows x64）**
+Ground Station Runtime Package — no Python, no setup required.
+
+> 这是**已经打包好的程序**，不需要安装 Python，也不需要配置任何环境。
+> 完整使用说明见同目录的 **`使用说明.txt`**（先看这个）。
+
+---
+
+## 三步跑起来
+
+1. 把**整个文件夹**复制到一个**纯英文（ASCII）路径**下，例如 `D:\LandStation-Lite\`
+2. 双击 `LandStation-Lite.exe`
+3. 阅读弹出的「免责声明与使用许可」，勾选后点「我已阅读并同意」（点「不同意并退出」则程序关闭）
+
+> ⚠️ **不要只拷 `LandStation-Lite.exe` 单个文件。**
+> 同级的 `_internal/` 目录是程序运行必需的（Qt、OpenCV、Python 运行时都在里面），
+> 实测只拷 exe 会立刻退出、连窗口都不会出现。必须整个文件夹一起复制。
 >
-> **版本**：v1.0.0 · **发布日期**：2026-10-08 · **平台**：Windows 10/11 x64 · **许可**：GPL-3.0
-> **包文件**：`LandStation-Lite-v1.0.0-src.zip`（17 MB · 122 个文件 · SHA256 `4a8e31713f1bf613f79d79b5b5a729aeb487b3048b7c9bc8ebb8af49d1a2d378`）
+> ⚠️ **路径含中文会跑不起来**（QtWebEngine 的已知限制，会闪退或地图空白）。
+> 详见 `使用说明.txt` 第二节。
 
-双无人船（USV + 浮船坞）协同控制地面站的**精简版源码发布包**，含完整源码、预置配置与随包文档。
-A source release of the lightweight ground station for dual-USV cooperative control, with full source code, preset configuration and bundled documentation.
+---
 
-## 包内清单 / Contents
+## 本目录里都是什么
 
-| 路径 | 说明 |
+| 文件 / 目录 | 说明 |
 | --- | --- |
-| `README.md` | 项目总览、功能特性、FAQ（开源发布版措辞）/ Project overview & FAQ |
-| `环境配置说明.md` | **环境搭建权威文档**（Python 3.10 / 依赖 / 常见问题）/ Environment setup guide |
-| `start_groundstation.bat` | 一键启动脚本 / One-click launcher |
-| `run_start_with_log.bat` | 带日志启动（排障用）/ Launcher with log output |
-| `requirements.txt` / `requirements-optional.txt` | 必需依赖 / 可选依赖（YOLOv8 目标检测） |
-| `main.py` · `_version.py` | 程序入口与版本元信息 / Entry point & version metadata |
-| `LICENSE` · `THIRD_PARTY_NOTICES.md` | **GPL-3.0 全文** / 第三方组件许可与致谢 |
-| `missions.json` | 预置演示任务（**形状保真演示版**，非真实坐标）/ Demo missions |
-| `config/` | 手柄映射、模拟器等预置配置（隐私脱敏版）/ Preset configs (sanitized) |
-| `core/` `ui/` `vision/` `Tools/` `docs/` | 协议与控制链 / 界面 / 视觉 / 工具与验收脚本 / 联调文档 |
+| `LandStation-Lite.exe` | **主程序**，双击启动 |
+| `使用说明.txt` | **面向使用者的完整说明书**（怎么跑、路径要求、系统要求、日志、常见问题） |
+| `_internal/` | 程序运行必需的运行时与依赖库，**不要删、不要改** |
+| `config/` | 预置配置（手柄映射 `joystick_mapping.json`、孪生路径 `simulator.json`） |
+| `missions.json` | 预置演示任务（形状保真演示版，非真实坐标） |
+| `LICENSE` · `THIRD_PARTY_NOTICES.md` | GPL-3.0 全文 / 第三方组件许可与致谢 |
+| `环境配置说明-源码工程.md` | ⚠️ **源码工程**的环境搭建文档，**与运行本程序无关** |
+| `README-源码工程.md` | ⚠️ **源码工程**的项目说明，**与运行本程序无关** |
+| `docs/` | 联调口径文档（数字孪生对接用） |
+| `data_logs/` | 运行期自动生成的日志与遥测数据 |
 
-## 获取与运行 / Run
+---
 
-1. 下载 `LandStation-Lite-v1.0.0-src.zip` 并解压到**纯 ASCII 路径**（例如 `D:\LandStation-Lite`；
-   中文路径会导致 QtWebEngine 资源加载失败，表现为双击无反应）
-2. 准备环境：`py -3.10 -m venv venv_usv`
-3. 安装依赖：`venv_usv\Scripts\python.exe -m pip install -r requirements.txt`
-4. 自检（可选但推荐）：`venv_usv\Scripts\python.exe Tools\check_env.py`
-5. 启动：双击 `start_groundstation.bat`（排障时用 `run_start_with_log.bat` 看日志）
+## 配套使用 / Pairing with the digital twin
 
-> 需要 YOLOv8 目标检测时另装：`pip install -r requirements-optional.txt`
->（自训权重 `best.pt` / `boat_NOF.pt` 已随包；Ultralytics 框架本身为 AGPL-3.0，见 `THIRD_PARTY_NOTICES.md`）
+本地面站与同仓库的 [`digital_twin/`](../../digital_twin/)（数字孪生仿真环境）配套：
 
-## 与数字孪生环境联调 / Joint Integration
+1. 先启动 `digital_twin/Build_GCS_Compatible/USV_Sim2Real_Simulation_Platform.exe`
+2. 再启动本地面站
+3. 在工具栏点「🚀 一键启动数字孪生」即可联调
 
-- 配套的 Unity 数字孪生仿真环境见 [`../digital_twin/`](../digital_twin/README.md)
-- 端口、帧格式与联调口径以包内 `docs/联调_数字孪生V1_M5口径与验收.md` 及
-  `digital_twin/Build_GCS_Compatible/GROUND_STATION_INTERFACE.md` 为准
-- 联调回归 **12/12 通过**（2026-10-08）
+---
 
-## 状态 / Status
+## 开源协议 / License
 
-- 验收全绿（2026-10-08）：控制链 30 项 · 协议基线 121 项 0 差异 · 数字孪生 6 组 · UI 断言 · 环境自检 · WebEngine 资源
-- 发布门禁：隐私脱敏与悬空引用扫描 **0 告警**（由 `Tools/package_release.py` 四道关卡强制执行）
-- 本仓库仅发布打包产物；开发源码仓与内部调试资料**不对外**
+本程序以 **GNU GPL v3** 发布（因其依赖 GPL 授权的 PyQt5），完整条款见同目录 `LICENSE`；
+第三方组件的许可与归属见 `THIRD_PARTY_NOTICES.md`。
 
-## 许可 / License
+依 GPL-3.0，分发本可执行程序时应同时提供对应的完整源代码。本仓库当前只分发可执行程序；
+如你需要对应源码（用于修改、审计或再分发），请通过本仓库的 Issue 或作者主页联系获取。
 
-- 本包以 **GPL-3.0** 发布，完整条款见包内 `LICENSE`；第三方组件许可见包内 `THIRD_PARTY_NOTICES.md`
-- 选择 GPL-3.0 的原因：依赖 PyQt5 / PyQtWebEngine（GPL v3 与商业双授权），详见包内 `README.md` 许可节
+This program is released under **GPL-3.0** (it depends on GPL-licensed PyQt5).
+This repository currently distributes the executable only; please contact the authors via
+this repository's Issues if you need the corresponding source code.
+
+---
+
+## 出处 / Credits
+
+华南理工大学 NOF 创新创业团队 · 海洋科学与工程学院
+NOF Innovation & Entrepreneurship Team, School of Marine Science and Engineering,
+South China University of Technology.
