@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>USV 任务规划地图 - 交互增强版</title>
+    <!-- ============================================================
+         T1 · Leaflet 本地化（离线可用）
+         原本走 unpkg CDN → 断网即白屏（孪生底图也显示不出来）。
+         现优先加载工程内 ui/map/leaflet/ 的本地副本；
+         若本地文件缺失，再回退 CDN（联网时仍可用）。
+         注意：必须用【相对路径】—— 页面经 QUrl.fromLocalFile 加载，
+         相对路径与页面同源最稳；绝对 file:// 路径可能被 QtWebEngine 拦截。
+         ============================================================ -->
+    <link rel="stylesheet" href="leaflet/leaflet.css" />
+    <script src="leaflet/leaflet.js"></script>
+    <script>
+        // T1 回退：本地 Leaflet 缺失/被拦时用 CDN 兜底。
+        //
+        // ⚠️ 重要：本地副本能否被读到，取决于 QtWebEngine 的
+        //    LocalContentCanAccessFileUrls 设置。该开关已在
+        //    ui/ui_builder.py 里显式打开；如果它被关掉（或被安全策略拦下），
+        //    本地 leaflet.js 会加载失败 → 地图区域一片空白。
+        //    这里做两层兜底，并把失败原因打到控制台，便于排查。
+        (function () {
+            if (typeof L !== 'undefined') { return; }   // 本地命中，收工
+            console.error('[TwinMap] 本地 leaflet/leaflet.js 未加载成功' +
+                          '（常见原因：LocalContentCanAccessFileUrls 未开启，' +
+                          '或本地副本缺失）。尝试 CDN 兜底…');
+            var css = document.createElement('link');
+            css.rel = 'stylesheet';
+            css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+            document.head.appendChild(css);
+            var js = document.createElement('script');
+            js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+            js.onload = function () {
+                console.warn('[TwinMap] 已用 CDN 兜底加载 Leaflet；' +
+                             '离线环境请检查 LocalContentCanAccessFileUrls。');
+            };
+            js.onerror = function () {
+                console.error('[TwinMap] CDN 兜底也失败 —— 地图将是空白。' +
+                              '请确认 ui/ui_builder.py 已开启 ' +
+                              'LocalContentCanAccessFileUrls，且本地 ' +
+                              'ui/map/leaflet/leaflet.js 存在。');
+            };
+            document.head.appendChild(js);
+        })();
+    </script>
+    <script type="text/javascript" src="qrc:///qtwebchannel/qwebchannel.js"></script>
+    
+    <style>
+        body { padding: 0; margin: 0; }
+        html, body, #map { height: 100%; width: 100%; }
+        .edit-cursor { cursor: crosshair; }
+        .identify-cursor { cursor: help; }
+        /* 🔴 小船红色大头针 */
+        .boat-pin {
+            width: 18px; height: 18px;
+            background: #e74c3c;
+            border: 2px solid #fff;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.45);
+        }
+        /* 测距标签样式 */
+        .dist-label {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #666;
+            border-radius: 4px;
+            padding: 1px 4px;
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <script>
+        // ==========================================
+        // 0. 前置守卫：把"初始化失败"变成**可见的错误**，而不是一片空白
+        // ==========================================
+        // 原先如果 Leaflet 没装上（或地图初始化抛异常），
+        // 下面 `L.map(...)` 会中断整个脚本，页面只剩**一片空白**，
+        // 用户完全看不出发生了什么。这里统一兜底：
+        //   1) Leaflet 未定义 → 画一块说明面板
+        //   2) 任何未捕获的 JS 错误 → 也画出来
+        window.__twinFatalShown = false;
+        function __twinShowFatal(title, detail) {
+            if (window.__twinFatalShown) { return; }
+            window.__twinFatalShown = true;
+            try {
+                var box = document.getElementById('map');
+                if (!box) { return; }
+                box.innerHTML =
+                    '<div style="display:flex;align-items:center;justify-content:center;' +
+                    'height:100%;background:#1e1e1e;color:#ff6b6b;' +
+                    'font:14px/1.8 Consolas,monospace;text-align:center;padding:24px;">' +
+                    '<div><b>' + title + '</b><br><br>' + detail + '</div></div>';
+            } catch (e) { /* 显示层失败就算了 */ }
+        }
+        window.onerror = function (msg, src, line, col) {
+            console.error('[TwinMap] 未捕获的 JS 错误: ' + msg + ' @' + src + ':' + line);
+            __twinShowFatal('地图初始化出错',
+                String(msg) + '<br>' + String(src || '').split('/').pop() +
+                ':' + line + '<br><br>详见控制台输出。');
+            return false;
+        };
+        if (typeof L === 'undefined') {
+            console.error('[TwinMap] Leaflet 未定义 —— 地图无法初始化。' +
+                          '请检查 LocalContentCanAccessFileUrls 与 ' +
+                          'ui/map/leaflet/leaflet.js');
+            document.addEventListener('DOMContentLoaded', function () {
+                __twinShowFatal('地图引擎 (Leaflet) 未能加载',
+                    '· 本地文件：ui/map/leaflet/leaflet.js<br>' +
+                    '· 请确认 <code>ui/ui_builder.py</code> 已开启<br>' +
+                    '&nbsp;&nbsp;<code>LocalContentCanAccessFileUrls</code><br>' +
+                    '（否则 file:// 页面读不到本地 JS / 图片）<br>' +
+                    '&nbsp;&nbsp;或本地副本缺失<br><br>详见控制台输出。');
+            });
+        }
+
+        // ==========================================
+        // 1. 基础变量与地图初始化
+        // ==========================================
+        // 🔎 关键诊断：Leaflet 到底有没有加载进来。
+        //    这行会经 ui/ui_builder.py 的 _MapConsolePage 转发到 Python 终端，
+        //    所以"底图空白"时第一件事就是看这行。
+        if (typeof L === 'undefined') {
+            console.error('[TwinMap] ❌ Leaflet 未加载 (L is undefined)');
+        } else {
+            console.log('[TwinMap] ✅ Leaflet 已加载, version=' + (L.version || '?'));
+        }
+        var isEditMode = false;
+        var isIdentifyMode = false; 
+        var draftPoints = []; 
+        var identifyPopups = []; 
+        var missionMarkers = []; // 💡 存储任务航点 Marker 实例，用于拖拽
+        var pyBackend = null; 
+        var isEditMode = false;
+        var isIdentifyMode = false; 
+        var isPointGoMode = false; // 💡 新增：点选直达模式标志位
+
+
+        var map = L.map('map').setView([23.014035, 113.397917], 16);
+        // T2 · 具名图层（原为匿名创建 → 无法 remove()，切底图会静默失败）
+        var googleTileLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            maxZoom: 22, attribution: '© Google'
+        });
+        googleTileLayer.addTo(map);
+
+        // 图层组
+        var realtimeLayer = L.layerGroup().addTo(map);
+        var missionLayer = L.layerGroup().addTo(map);
+        var draftLayer = L.layerGroup().addTo(map);
+        var intentLayer = L.layerGroup().addTo(map); // 💡 新增：算法意图层
+
+        // 实体标记
+        var boatMarker = L.marker([23.014035, 113.397917], {
+            icon: L.divIcon({
+                className: 'boat-pin-icon',
+                html: '<div class="boat-pin"></div>',
+                iconSize: [22, 26], iconAnchor: [11, 22]
+            })
+        }).addTo(realtimeLayer);
+        var boatMarkerB = L.marker([23.014035, 113.397917], {
+            icon: L.divIcon({
+                className: 'custom-div-icon',
+                html: '<div style="background-color:#ff69b4; width:8px; height:8px; border-radius:50%; border:2px solid white;"></div>',
+                iconSize: [8, 8], iconAnchor: [4, 4]
+            })
+        }).addTo(realtimeLayer);
+        var dockMarker = L.marker([23.014035, 113.397917]).addTo(realtimeLayer);
+        var dockMarkerB = L.marker([23.014035, 113.397917], {
+            icon: L.divIcon({
+                className: 'custom-div-icon',
+                html: '<div style="background-color:#ffd700; width:8px; height:8px; border-radius:50%; border:2px solid white;"></div>',
+                iconSize: [8, 8], iconAnchor: [4, 4]
+            })
+        }).addTo(realtimeLayer);
+
+        // 🟢 天线A+B中点标记 (算法实际使用位置)
+        var boatMidMarker = L.marker([23.014035, 113.397917], {
+            icon: L.divIcon({
+                className: 'custom-div-icon',
+                html: '<div style="background-color:#2ecc71; width:10px; height:10px; border-radius:50%; border:2px solid white; box-shadow: 0 0 4px rgba(46,204,113,0.6);"></div>',
+                iconSize: [10, 10], iconAnchor: [5, 5]
+            })
+        }).addTo(realtimeLayer).bindTooltip('⚓ 子船中点');
+        var dockMidMarker = L.marker([23.014035, 113.397917], {
+            icon: L.divIcon({
+                className: 'custom-div-icon',
+                html: '<div style="background-color:#2ecc71; width:10px; height:10px; border-radius:50%; border:2px solid white; box-shadow: 0 0 4px rgba(46,204,113,0.6);"></div>',
+                iconSize: [10, 10], iconAnchor: [5, 5]
+            })
+        }).addTo(realtimeLayer).bindTooltip('⚓ 船坞中点');
+
+        // 🟢 中点轨迹 (算法实际行进路径)
+        var boatMidTrack = L.polyline([], {color: '#2ecc71', weight: 2.5, opacity: 0.6}).addTo(realtimeLayer);
+        var dockMidTrack = L.polyline([], {color: '#2ecc71', weight: 2.5, opacity: 0.6}).addTo(realtimeLayer);
+
+        // 💡 算法意图可视化：绿色虚线箭头 (子船)
+        var boatTargetVector = L.polyline([], {
+            color: '#2ecc71', weight: 3, dashArray: '5, 8', opacity: 0.8
+        }).addTo(intentLayer);
+        // 💡 算法意图可视化：橙色虚线箭头 (船坞)
+        var dockTargetVector = L.polyline([], {
+            color: '#ff8c00', weight: 3, dashArray: '5, 8', opacity: 0.8
+        }).addTo(intentLayer);
+
+        var missionPolyline = L.polyline([], {color: '#0078FF', weight: 3}).addTo(missionLayer);
+        var draftPolyline = L.polyline([], {color: '#666666', weight: 3, dashArray: '10, 10'}).addTo(draftLayer);
+
+        // --- 🚀 新增：点选直达模式控制 ---
+        function enterPointGoMode() {
+            exitEditMode(); 
+            exitIdentifyMode();
+            isPointGoMode = true;
+            // 改变鼠标指针样式为准星，给用户视觉反馈
+            document.getElementById('map').classList.add('edit-cursor');
+        }
+
+        function exitPointGoMode() {
+            isPointGoMode = false;
+            document.getElementById('map').classList.remove('edit-cursor');
+        }
+
+
+        // 初始化 WebChannel
+        document.addEventListener("DOMContentLoaded", function() {
+            if (typeof qt !== 'undefined' && qt.webChannelTransport) {
+                new QWebChannel(qt.webChannelTransport, function(channel) {
+                    pyBackend = channel.objects.pyBackend;
+                    // 🔎 通道就绪后，延迟上报一次地图内部状态到 Python 终端。
+                    //    这样"地图空白"时不必猜 —— 终端会直接说明原因。
+                    setTimeout(__twinReportState, 2500);
+                });
+            } else {
+                console.error('[TwinMap] qt.webChannelTransport 不可用 —— ' +
+                              'pyBackend 未建立，地图无法与 Python 通信');
+            }
+        });
+
+        // 🔎 诊断：把地图关键状态回传 Python 终端。
+        //    覆盖"空白"的三种成因：Leaflet 没加载 / 容器尺寸为 0 / 瓦片全挂。
+        function __twinReportState() {
+            var st = {stage: 'unknown'};
+            try {
+                st.leaflet = (typeof L !== 'undefined') ? (L.version || 'yes') : 'MISSING';
+                var box = document.getElementById('map');
+                var br = box ? box.getBoundingClientRect() : null;
+                st.boxSize = br ? [Math.round(br.width), Math.round(br.height)] : null;
+                st.docSize = [window.innerWidth, window.innerHeight];
+                if (typeof map === 'undefined' || !map) {
+                    st.mapObj = 'MISSING';
+                    st.stage = 'L.map() 未成功';
+                } else {
+                    st.mapObj = 'ok';
+                    st.zoom = map.getZoom();
+                    var c = map.getCenter();
+                    st.center = [Number(c.lat.toFixed(6)), Number(c.lng.toFixed(6))];
+                    var mc = map.getContainer();
+                    st.mapContainerSize = [mc.clientWidth, mc.clientHeight];
+                    // 瓦片：统计已加载 / 出错数量
+                    var tiles = document.querySelectorAll('img.leaflet-tile');
+                    var bad = 0, good = 0;
+                    for (var i = 0; i < tiles.length; i++) {
+                        if (tiles[i].complete && tiles[i].naturalWidth === 0) { bad++; }
+                        else if (tiles[i].complete) { good++; }
+                    }
+                    st.tiles = {total: tiles.length, loaded: good, failed: bad};
+                    st.googleLayerOnMap = !!(typeof googleTileLayer !== 'undefined' &&
+                                             googleTileLayer && map.hasLayer(googleTileLayer));
+                    if (box && br && (br.width < 1 || br.height < 1)) {
+                        st.stage = '★ 容器尺寸为 0 → 地图不可见（布局问题）';
+                    } else if (tiles.length === 0) {
+                        st.stage = '★ 一个瓦片都没有 → 瓦片未发起请求';
+                    } else if (good === 0 && bad > 0) {
+                        st.stage = '★ 瓦片全部加载失败（网络不可达）';
+                    } else if (good > 0) {
+                        st.stage = 'ok：底图正常加载';
+                    }
+                }
+            } catch (e) {
+                st.error = String(e);
+            }
+            if (pyBackend) {
+                try { pyBackend.reportMapState(JSON.stringify(st)); } catch (e) {}
+            }
+            console.log('[TwinMap] 状态: ' + JSON.stringify(st));
+            return st;
+        }
+        // 也暴露到全局，方便手工调用 __twinReportState()
+        window.__twinReportState = __twinReportState;
+
+        // ==========================================
+        // 2. 模式切换逻辑
+        // ==========================================
+        function enterEditMode() {
+            exitIdentifyMode(); 
+            isEditMode = true;
+            clearDraft();
+            document.getElementById('map').classList.add('edit-cursor');
+        }
+
+        function exitEditMode() {
+            isEditMode = false;
+            document.getElementById('map').classList.remove('edit-cursor');
+        }
+
+        function enterIdentifyMode() {
+            exitEditMode(); 
+            isIdentifyMode = true;
+            document.getElementById('map').classList.add('identify-cursor');
+        }
+
+        function exitIdentifyMode() {
+            isIdentifyMode = false;
+            document.getElementById('map').classList.remove('identify-cursor');
+            identifyPopups.forEach(p => map.removeLayer(p));
+            identifyPopups = []; 
+        }
+
+        // ==========================================
+        // 3. 点击处理与打点逻辑
+        // ==========================================
+        map.on('click', function(e) {
+
+            // 💡 优先判定：点选直达模式
+            if (isPointGoMode) {
+                // 1. 立即将经纬度传回 Python 后端
+                if (pyBackend) {
+                    pyBackend.receivePointGoCoord(e.latlng.lat, e.latlng.lng);
+                }
+                // 2. 点击后立即退出该模式（单次生效，类似 LOL 右键点击）
+                exitPointGoMode();
+                return;
+            }
+
+
+            if (isIdentifyMode) {
+                var content = "<b>📍 位置识别</b><br>纬度: " + e.latlng.lat.toFixed(6) + "<br>经度: " + e.latlng.lng.toFixed(6);
+                var popup = L.popup({ autoClose: false, closeOnClick: false }).setLatLng(e.latlng).setContent(content).addTo(map);
+                identifyPopups.push(popup);
+                if (pyBackend) pyBackend.receiveClickCoord(e.latlng.lat, e.latlng.lng);
+                return;
+            }
+            
+            if (isEditMode) {
+                // 如果是第一个点或者是点数为空，直接添加
+                if (draftPoints.length === 0) {
+                    draftPoints.push(e.latlng);
+                    L.circleMarker(e.latlng, { radius: 5, color: '#666', fillColor: '#fff', fillOpacity: 1 }).addTo(draftLayer);
+                } else {
+                    // 获取刚才的最后一个点
+                    var lastPoint = draftPoints[draftPoints.length - 1];
+                    var dist = map.distance(lastPoint, e.latlng); // 自动计算由于地球曲率带来的米级距离
+                    
+                    if (dist > 5.0) {
+                        var numPoints = Math.floor(dist / 5.0);
+                        for (var i = 1; i <= numPoints; i++) {
+                            var ratio = (i * 5.0) / dist;
+                            var interLat = lastPoint.lat + (e.latlng.lat - lastPoint.lat) * ratio;
+                            var interLng = lastPoint.lng + (e.latlng.lng - lastPoint.lng) * ratio;
+                            var newLatlng = L.latLng(interLat, interLng);
+                            
+                            draftPoints.push(newLatlng);
+                            L.circleMarker(newLatlng, { radius: 5, color: '#666', fillColor: '#fff', fillOpacity: 1 }).addTo(draftLayer);
+                        }
+                        
+                        // 补充尾点
+                        if (dist > numPoints * 5.0) {
+                            draftPoints.push(e.latlng);
+                            L.circleMarker(e.latlng, { radius: 5, color: '#666', fillColor: '#fff', fillOpacity: 1 }).addTo(draftLayer);
+                        }
+                    } else {
+                        // 距离不足5米，不添加点
+                    }
+                }
+                draftPolyline.setLatLngs(draftPoints);
+            }
+        });
+
+        function clearDraft() {
+            draftPoints = [];
+            draftLayer.clearLayers();
+            draftPolyline.setLatLngs([]);
+        }
+
+        // ==========================================
+        // 4. 🚀 任务保存与拖拽重构 (核心优化点)
+        // ==========================================
+        function saveDraftPath() {
+            if (draftPoints.length === 0) return;
+            var coords = draftPoints.map(p => [p.lat, p.lng]);
+            if (pyBackend) pyBackend.receiveNewPath(JSON.stringify(coords));
+            
+            renderMissionPath(draftPoints);
+            exitEditMode();
+            clearDraft();
+        }
+
+        function renderMissionPath(points) {
+            missionLayer.clearLayers();
+            missionMarkers = [];
+            
+            missionPolyline = L.polyline(points, { color: '#0078FF', weight: 3 }).addTo(missionLayer);
+            
+            points.forEach((latlng, index) => {
+                // 💡 关键：将航点设为可拖动 (draggable: true)
+                var marker = L.marker(latlng, {
+                    icon: L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `<div style="background-color:#0078FF; width:10px; height:10px; border-radius:50%; border:2px solid white;"></div>`,
+                        iconSize: [10, 10], iconAnchor: [5, 5]
+                    }),
+                    draggable: true
+                }).addTo(missionLayer);
+                
+                marker.bindTooltip("WP " + (index + 1));
+                
+                // 💡 监听拖拽事件
+                marker.on('drag', function() {
+                    updatePolylineFromMarkers();
+                });
+                
+                marker.on('dragend', function() {
+                    syncPathToPython(); // 拖拽结束，自动保存到后端
+                });
+
+                missionMarkers.push(marker);
+            });
+            updateDistances(); // 💡 初始显示距离
+        }
+
+        function updatePolylineFromMarkers() {
+            var newCoords = missionMarkers.map(m => m.getLatLng());
+            missionPolyline.setLatLngs(newCoords);
+            updateDistances();
+        }
+
+        function syncPathToPython() {
+            var coords = missionMarkers.map(m => [m.getLatLng().lat, m.getLatLng().lng]);
+            if (pyBackend) pyBackend.receiveNewPath(JSON.stringify(coords));
+        }
+
+        // 💡 实时测距逻辑：在航段中点显示距离
+        function updateDistances() {
+            // 先清除旧的标签
+            missionLayer.eachLayer(layer => { if (layer instanceof L.Marker && layer.options.pane === 'tooltipPane') missionLayer.removeLayer(layer); });
+            
+            var coords = missionMarkers.map(m => m.getLatLng());
+            for (var i = 0; i < coords.length - 1; i++) {
+                var p1 = coords[i];
+                var p2 = coords[i+1];
+                var dist = p1.distanceTo(p2).toFixed(1);
+                var midPoint = L.latLng((p1.lat + p2.lat) / 2, (p1.lng + p2.lng) / 2);
+                
+                L.marker(midPoint, {
+                    icon: L.divIcon({ className: 'dist-label', html: dist + "m" }),
+                    interactive: false
+                }).addTo(missionLayer);
+            }
+        }
+
+        var MAX_TRACK_POINTS = 300;
+
+        function addLatLngAndTrim(track, latlng) {
+            track.addLatLng(latlng);
+            var pts = track.getLatLngs();
+            if (pts.length > MAX_TRACK_POINTS) {
+                track.setLatLngs(pts.slice(pts.length - MAX_TRACK_POINTS));
+            }
+        }
+
+        // ==========================================
+        // 5. 🚀 态势感知更新 (显示期望航向)
+        // ==========================================
+        function updateBoatPosition(lat, lon, heading) {
+            var latlng = [lat, lon];
+            boatMarker.setLatLng(latlng);
+        }
+
+        /**
+         * 💡 船坞专用：更新算法期望目标可视化
+         */
+        function updateDockTargetIndicator(lat, lon, targetHeading, targetSpeed) {
+            if (targetHeading === null || targetSpeed === 0) {
+                dockTargetVector.setLatLngs([]);
+                return;
+            }
+            var start = L.latLng(lat, lon);
+            var vectorLen = targetSpeed * 10;
+            var rad = targetHeading * Math.PI / 180;
+            var endLat = lat + (Math.cos(rad) * vectorLen / 111320);
+            var endLon = lon + (Math.sin(rad) * vectorLen / (111320 * Math.cos(lat * Math.PI / 180)));
+            dockTargetVector.setLatLngs([start, [endLat, endLon]]);
+        }
+
+        /**
+         * 💡 子船专用：更新算法期望目标可视化
+         */
+        function updateBoatTargetIndicator(lat, lon, targetHeading, targetSpeed) {
+            if (targetHeading === null || targetSpeed === 0) {
+                boatTargetVector.setLatLngs([]);
+                return;
+            }
+            var start = L.latLng(lat, lon);
+            var vectorLen = targetSpeed * 10;
+            var rad = targetHeading * Math.PI / 180;
+            var endLat = lat + (Math.cos(rad) * vectorLen / 111320);
+            var endLon = lon + (Math.sin(rad) * vectorLen / (111320 * Math.cos(lat * Math.PI / 180)));
+            boatTargetVector.setLatLngs([start, [endLat, endLon]]);
+        }
+
+        // 在 map.html 中添加
+        function clearRealtimeTracks() {
+             boatMidTrack.setLatLngs([]);
+             dockMidTrack.setLatLngs([]);
+        }
+
+        function updateDockPosition(lat, lon, heading) {
+            var latlng = [lat, lon];
+            dockMarker.setLatLng(latlng);
+        }
+
+        function updateBoatPositionB(lat, lon) {
+            var latlng = [lat, lon];
+            boatMarkerB.setLatLng(latlng);
+        }
+
+        function updateDockPositionB(lat, lon) {
+            var latlng = [lat, lon];
+            dockMarkerB.setLatLng(latlng);
+        }
+
+        function updateBoatMidPosition(lat, lon) {
+            var latlng = [lat, lon];
+            boatMidMarker.setLatLng(latlng);
+            addLatLngAndTrim(boatMidTrack, latlng);
+        }
+
+        function updateDockMidPosition(lat, lon) {
+            var latlng = [lat, lon];
+            dockMidMarker.setLatLng(latlng);
+            addLatLngAndTrim(dockMidTrack, latlng);
+        }
+
+        // ==========================================
+        // 6. 🏠 一键返航：返航点标记
+        // ==========================================
+        var homeMarker = null;
+        var repeatBoatStartMarker = null;
+        var repeatDockStartMarker = null;
+
+        function showRepeatStartMarkers(boatLat, boatLon, dockLat, dockLon) {
+            if (repeatBoatStartMarker) map.removeLayer(repeatBoatStartMarker);
+            if (repeatDockStartMarker) map.removeLayer(repeatDockStartMarker);
+            repeatBoatStartMarker = L.circleMarker([boatLat, boatLon], {
+                radius: 9, color: '#ff4d4f', weight: 3, fillColor: '#ffffff', fillOpacity: 0.9
+            }).addTo(map).bindTooltip('🔁 子船循环起点');
+            repeatDockStartMarker = L.circleMarker([dockLat, dockLon], {
+                radius: 9, color: '#ff9800', weight: 3, fillColor: '#ffffff', fillOpacity: 0.9
+            }).addTo(map).bindTooltip('🔁 船坞循环起点');
+        }
+
+        function showHomeMarker(lat, lon) {
+            if (homeMarker) {
+                homeMarker.setLatLng([lat, lon]);
+            } else {
+                homeMarker = L.marker([lat, lon], {
+                    icon: L.divIcon({
+                        className: 'custom-div-icon',
+                        html: '<div style="background-color:#ff4444; width:14px; height:14px; border-radius:50%; border:3px solid white; box-shadow: 0 0 8px rgba(255,50,50,0.7);"></div>',
+                        iconSize: [14, 14], iconAnchor: [7, 7]
+                    }),
+                    zIndexOffset: 1000
+                }).addTo(map);
+                homeMarker.bindTooltip("🏠 返航点");
+            }
+        }
+
+        function removeHomeMarker() {
+            if (homeMarker) {
+                map.removeLayer(homeMarker);
+                homeMarker = null;
+            }
+        }
+
+        // ============================================================
+        // 7. 🌐 孪生底图切换（T3 新增）
+        //    真实 Google 卫星图  ↔  Unity 场景俯视截图（L.imageOverlay）
+        //
+        //    【设计要点】这是【纯显示层切换】—— 不触碰任何打点 / 标记 /
+        //    轨迹 / 任务逻辑，因此孪生视图可完整复用地面站既有的任务规划中心。
+        //    控制侧的门禁由 Python 端负责（T7 范围校验 / T8 孪生视图守卫）。
+        // ============================================================
+        var twinOverlay = null;
+        var savedView   = null;   // 记住真实地图视口，切回时恢复
+        var twinActive  = false;  // 孪生底图是否激活
+
+        // 按"图像像素覆盖多少米"反算合适的缩放级别
+        //   米/像素 = 156543.03392 * cos(lat) / 2^z
+        //   → z = log2(156543.03392 * cos(lat) * imgPx / extent)
+        function _twinZoomFor(extentMeters, centerLat, imgPx) {
+            try {
+                var scale = 156543.03392 * Math.cos(centerLat * Math.PI / 180.0);
+                var z = Math.log(scale * (imgPx || 1024) / extentMeters) / Math.LN2;
+                if (!isFinite(z)) { return 18; }
+                return Math.max(13, Math.min(21, Math.round(z)));
+            } catch (e) {
+                return 18;
+            }
+        }
+
+        function showTwinMap(sceneName, imageFile, bounds, imgPx) {
+            if (!bounds || !imageFile) { return false; }
+
+            // 仅在【首次进入】时保存真实地图视口；L1→L2 切换不覆盖
+            if (!twinActive) {
+                savedView = { c: map.getCenter(), z: map.getZoom() };
+            }
+
+            if (googleTileLayer && map.hasLayer(googleTileLayer)) {
+                map.removeLayer(googleTileLayer);
+            }
+            if (twinOverlay) { map.removeLayer(twinOverlay); twinOverlay = null; }
+
+            // ★ 先清掉上一关卡的 maxBounds，否则 L1(50 m) → L2(400 m) 切换时
+            //   setView 会被 L1 那个很小的边界钳住，导致视图不正确。
+            map.setMaxBounds(null);
+
+            twinOverlay = L.imageOverlay(
+                'twin_maps/' + imageFile,
+                [[bounds.bottomLat, bounds.leftLon],
+                 [bounds.topLat,    bounds.rightLon]]
+            ).addTo(map);
+
+            var cLat = (bounds.topLat + bounds.bottomLat) / 2;
+            var cLon = (bounds.leftLon + bounds.rightLon) / 2;
+            var extent = Math.max(1, (bounds.topLat - bounds.bottomLat) * 111320.0);
+
+            map.setView([cLat, cLon], _twinZoomFor(extent, cLat, imgPx));
+            // 视觉约束（真正的拒绝逻辑在 Python 端 T7）
+            map.setMaxBounds([[bounds.bottomLat, bounds.leftLon],
+                              [bounds.topLat,    bounds.rightLon]]);
+
+            twinActive = true;
+            console.log('[TwinMap] 已切到孪生底图: ' + sceneName);
+            return true;
+        }
+
+        function showRealMap() {
+            if (twinOverlay) { map.removeLayer(twinOverlay); twinOverlay = null; }
+            if (googleTileLayer && !map.hasLayer(googleTileLayer)) {
+                googleTileLayer.addTo(map);
+            }
+            map.setMaxBounds(null);
+            if (savedView) {                 // 恢复进入孪生前的视口
+                map.setView(savedView.c, savedView.z);
+                savedView = null;
+            }
+            twinActive = false;
+            console.log('[TwinMap] 已切回真实地图');
+            return true;
+        }
+
+        function isTwinActive() { return twinActive; }
+    </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+# 文件路径: vision/algorithms/yolo_v8/botsort_nof.yaml
+# 🎯 针对单类 NOF 检测调优的 BoT-SORT 配置
+# 原默认值: track_high_thresh=0.5 / new_track_thresh=0.6 / match_thresh=0.8 / track_buffer=30
+# 你的模型置信度普遍在 0.25~0.45，故下调阈值以保证 track 能稳定建立与维持。
+
+tracker_type: botsort            # 跟踪器类型 (带相机运动补偿 GMC，适合摄像头装在晃动的船上)
+
+track_high_thresh: 0.2           # 第一次关联的置信度下限 (≥此值视为"高分"检测)
+track_low_thresh: 0.05           # 第二次关联的置信度下限 (仅用于维持已有 track)
+new_track_thresh: 0.25           # 未匹配到任何 track 时，允许建立新 track 的置信度下限
+track_buffer: 60                 # 目标丢失后保留 track 的帧数 (约 2 秒 @30fps，用于漏帧补框)
+match_thresh: 0.6                # IoU 匹配阈值 (调低以容忍框抖动/尺度变化)
+fuse_score: True                 # 关联时融合置信度与 IoU 距离
+
+# BoT-SORT 专属
+gmc_method: sparseOptFlow        # 全局运动补偿方法 (补偿相机/船体晃动)
+proximity_thresh: 0.5
+appearance_thresh: 0.25
+with_reid: False                 # 暂不启用外观重识别 (单目标场景无需)

@@ -1,0 +1,21 @@
+{
+  "levels": [
+    {
+      "scene": "Level1_Pool",
+      "image": "Level1_Pool_ortho_2048x2048.png",
+      "width": 2048,
+      "height": 2048,
+      "topLat": 23.129549155587497,
+      "bottomLat": 23.128650844412505,
+      "leftLon": 113.26391158679144,
+      "rightLon": 113.26488841320855,
+      "sceneExtentMeters": 100.0,
+      "navigableRadiusMeters": 22.0,
+      "boundsShape": "square",
+      "originLat": 23.1291,
+      "originLon": 113.2644,
+      "isDemoOnly": true,
+      "note": "Unity 正交俯视底图（digitaltwin/ortho-map/v1，2048×2048）；底图 100×100 m；origin=(23.1291, 113.2644) isDemoOnly=True；L1 底图内**不区分水面/陆地**（用户决策）：图内四角与湖岸之间是陆地，属既定设计；打点判据只做\"超出底图范围则拒绝\"。"
+    }
+  ]
+}
