@@ -1,0 +1,8 @@
+cff-version: 1.0.0
+message: "If you use this software, please cite it as below."
+authors:
+- Zixuan Guo, Zhijie Deng, Hao Wen
+orcid: https://orcid.org/0000-0002-1424-9910
+title:Wilhao-CN/WilhasonOceanMaster: WilhasonOceanMaster-V1.0.0
+version: v1.0.0
+date-released: 2026-10-13
