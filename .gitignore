@@ -20,6 +20,9 @@
 !/docs/
 !/parameters/
 !/usv/
+# ---------- 放行：GitHub Traffic 自动记录 ----------
+!/.github/
+!/traffic-data/
 
 # ---------- 例外排除 ----------
 # Unity 官方 DoNotShip 调试残留（含本机私有路径，不随包发布）
