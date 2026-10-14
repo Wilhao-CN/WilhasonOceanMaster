@@ -15,6 +15,13 @@ Produced and continuously maintained by the NOF Innovation & Entrepreneurship Te
 | `parameters/` | 完整动力学参数（Complete hydrodynamic parameters） |
 | `usv/` | 对应真实 USV 资料（Real USV materials） |
 
+## 流量统计 / Traffic
+
+![](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FWilhao-CN%2FWilhasonOceanMaster%2Fmain%2Ftraffic-data%2Ftraffic-summary.json&query=%24.message&label=traffic&color=blue)
+
+> 数据由 GitHub Actions 每日自动抓取并更新至 [`traffic-data/`](traffic-data/)（clones 与 views 按日期去重累积）。
+> Data is collected daily by GitHub Actions and archived in `traffic-data/`.
+
 ## 开源协议 / License
 
 仓库骨架采用 **MIT License**，完整条款见 [LICENSE](LICENSE)。
