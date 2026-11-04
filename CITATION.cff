@@ -1,8 +1,29 @@
-cff-version: 1.0.0
+cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 authors:
-- Zixuan Guo, Zhijie Deng, Hao Wen
-orcid: https://orcid.org/0000-0002-1424-9910
-title:Wilhao-CN/WilhasonOceanMaster: WilhasonOceanMaster-V1.0.0
-version: v1.0.0
-date-released: 2026-10-13
+  - family-names: Guo
+    given-names: Zixuan
+    affiliation: "New Ocean Force (NOF), School of Marine Science and Engineering, South China University of Technology"
+  - family-names: Deng
+    given-names: Zhijie
+    affiliation: "New Ocean Force (NOF), School of Marine Science and Engineering, South China University of Technology"
+  - family-names: Wen
+    given-names: Hao
+    orcid: "https://orcid.org/0000-0002-1424-9910"
+    affiliation: "New Ocean Force (NOF), School of Marine Science and Engineering, South China University of Technology"
+  - family-names: Liu
+    given-names: Tao
+    affiliation: "New Ocean Force (NOF), School of Marine Science and Engineering, South China University of Technology"
+  - family-names: Xia
+    given-names: Peiyuan
+    affiliation: "New Ocean Force (NOF), School of Marine Science and Engineering, South China University of Technology"
+  - family-names: Zhang
+    given-names: Ziming
+    affiliation: "New Ocean Force (NOF), School of Marine Science and Engineering, South China University of Technology"
+title: "WilhasonOceanMaster: A Physics-Based Digital Twin for Marine Surface Systems"
+version: v1.0.1
+date-released: 2026-11-04
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.23341141"
+    description: "Concept DOI for all versions of WilhasonOceanMaster"
