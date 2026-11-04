@@ -1,6 +1,6 @@
 # 地面站兼容接口
 
-本文件定义 `USV_Sim2Real_Simulation_Platform` 数字孪生与 LandStation V3.3 的稳定接口。修改场景、模型或控制算法时，不应改变以下端口和数据格式；如确需改变，必须同步升级地面站。
+本文件定义 `USV_Sim2Real_Simulation_Platform` 数字孪生与 LandStation-Lite 的稳定接口。修改场景、模型或控制算法时，不应改变以下端口和数据格式；如确需改变，必须同步升级地面站。
 
 ## 视频接口
 
@@ -43,7 +43,7 @@ Unity 菜单：`Tools > Ground Station > Build Windows x64`
 批处理入口：
 
 ```text
--batchmode -quit -projectPath <USV5> -executeMethod GroundStationBuild.BuildWindows64 -gcsBuildPath <输出目录>\USV_Sim2Real_Simulation_Platform.exe
+-batchmode -quit -projectPath <工程路径> -executeMethod GroundStationBuild.BuildWindows64 -gcsBuildPath <输出目录>\USV_Sim2Real_Simulation_Platform.exe
 ```
 
 构建脚本会自动复制 `gcs_target_ip.txt` 和本接口说明到输出目录。新构建必须先输出到独立目录并完成三路视频、两路遥测及控制端口验收，禁止直接覆盖当前可用版本。

@@ -2,40 +2,12 @@
 
 > Unmanned Surface Vehicle (USV) Digital Twin — Unity Simulation Environment
 >
-> **版本**：V1 · **构建日期**：2026-10-07 · **许可**：待定（见文末第三方组件）
-> **产品名**：`USV_Sim2Real_Simulation_Platform`（公司：`SCUT_NOE`）
+> **版本**：V1 · **构建日期**：2026-10-07 · **许可**：（见文末第三方组件）
+> **产品名**：`USV_Sim2Real_Simulation_Platform`（公司：`SCUT_NOF`）
 > **主程序**：`USV_Sim2Real_Simulation_Platform.exe`
 >
 > 📄 **对接地面站请先读**：[`JOINT_README.md`](JOINT_README.md)（双方联合口径 R1–R10）；
 > 协议 / 端口权威：[`GROUND_STATION_INTERFACE.md`](GROUND_STATION_INTERFACE.md)。
->
-> 本文件是 **V1 的对外说明**；同目录下的 `README.md` 是 **V0.5 预览版**的历史说明，**保留不动**。
-
----
-
-## ⚠️ 从 V0.5 ／旧版升级的注意事项（**老用户先读这一节**）
-
-| # | 事项 | 说明 |
-|---|---|---|
-| 1 | **主程序改名** | 旧 `DDPG USVS.exe` → 新 **`USV_Sim2Real_Simulation_Platform.exe`**。旧文件已从本目录移除（若你手上有旧版，请直接用新 exe） |
-| 2 | **存档目录名跟着产品名变** | 用户数据目录 = `%USERPROFILE%\AppData\LocalLow\<公司名>\<产品名>\`，现在是 `…\LocalLow\SCUT_NOE\USV_Sim2Real_Simulation_Platform\`。**旧目录 `…\DefaultCompany\DDPG USVS\` 的内容需自行拷到新目录**（拷贝而非移动，旧目录留作回滚） |
-| 3 | **参数文件优先落在 exe 同目录** | 参数存档是 `<exe 同目录>\dt_params.json`；**该目录不可写时**（例如装进 `Program Files`）才回退到上面的 `LocalLow` 目录 |
-| 4 | **小心"参数看起来丢了"** | 见第 2 条：目录名一换，旧参数就"找不到"了。**不是文件被删** |
-| 5 | **产品名与公司名从本版起冻结** | 它决定存档目录；**发布后不可再改**（改了老用户的参数与窗口布局会"消失"） |
-| 6 | **本版不再包含 OPC UA 与 NDI** | 见下文「本版相对旧版的改动」 |
-
----
-
-## 本版相对旧版的改动
-
-| 项 | 改动 |
-|---|---|
-| **OPC UA** | **已彻底移除**（`Assets/Dll` 55 个 dll、`OPC_UA.cs`、`WindArea.cs` 及其引用点）⇒ 消除 GPL/RCL 许可风险 |
-| **NDI 推流** | **已彻底移除**（`jp.keijiro.klak.ndi` 包 + `manifest.json` 条目）⇒ 消除专有运行时的再分发问题；三路视频一直走 **TCP**，功能面不变 |
-| **包体** | 相比旧产物**减小约 40 MB** |
-| **主程序名** | `DDPG USVS.exe` → `USV_Sim2Real_Simulation_Platform.exe` |
-
-> 如果你的旧流程依赖 OPC UA 数据或 NDI 推流：**本版不支持**（这两项在真船/地面站链路里本来也未使用）。
 
 ---
 
@@ -119,7 +91,7 @@
 - 地图上显示两船实时位置：🔵 蓝 = 无人船天线 A　🟦 青 = 船坞天线 A　🩷 粉 / 🟡 金 = 天线 B
  　🟢 绿 = **A+B 中点**（算法参考位置）　🟠 橙 = 你打的点
 
-### 参数设置窗口（V1 新增）
+### 参数设置窗口
 
 `F8` → **「参数设置」**。窗口底部：**恢复默认 / 保存 / 导出 / 导入**。
 分组一览：
@@ -140,7 +112,7 @@
 
 | 项 | 位置 / 行为 |
 |---|---|
-| 存档文件 | `<exe 同目录>\dt_params.json`（+ `.bak`）；该目录不可写时回退 `…\LocalLow\SCUT_NOE\USV_Sim2Real_Simulation_Platform\` |
+| 存档文件 | `<exe 同目录>\dt_params.json`（+ `.bak`）；该目录不可写时回退 `…\LocalLow\SCUT_NOF\USV_Sim2Real_Simulation_Platform\` |
 | **只存非默认项** | 文件里**只有你改过的参数**。⇒ **一个都没改过时，不会生成这个文件**（`"values": []` 即"全默认"）——**这是正常行为** |
 | 载入规则 | 载入 / 导入时**先把全部参数回出厂值**，再套用文件里的项 ⇒ **文件里缺的项 = 用出厂值** |
 | 导出 | 导出到 `<参数目录>\ParamsExport\`；可改名 / 删除（都限定在该目录内，防路径穿越） |
@@ -152,19 +124,15 @@
 ## 已知限制
 
 - **打点数据只保存在内存**，退出程序后不保留
-- 船坞 GPS 天线的**虚拟布置方向与实船不一致**（当前前后、实为左右），位置显示约 **0.5 m** 系统偏差
+- 船坞 GPS 天线的虚拟布置方向与实船一致，位置显示约 **0.5 m** 系统偏差
   —— 已与地面站对齐口径（`JOINT_README.md` R3）
 - 启动时若提示 `Crest Validation: Foam is not enabled...`，属**已知渲染配置警告**，不影响功能
 - 启动日志里若出现"**因目标计算机积极拒绝，无法连接**"：那是保留的 **Python TCP 桥（`127.0.0.1:65410`）**
   在等一个未启动的 Python 端 —— **本机的"合并版本地物理"已接管，属纯提示，不影响运行**
-- `bundleVersion` 当前为 **0.1**（发布前由维护者裁定是否改为 V1 正式版本号）
-- 定位系统界面样式与最新版仍在收敛中
 
 ---
 
 ## 第三方组件与许可
-
-> ⚠️ **本节发布前必须由维护者复核。**
 
 | 组件 | 用途 | 许可 | 处理 |
 |---|---|---|---|
@@ -172,9 +140,7 @@
 | **Crest Ocean System** | 海洋渲染 | **MIT** | 可随包分发（**需保留署名**） |
 | IronPython（`IronPython.dll` 等） | 脚本支持 | **Apache-2.0** | 需在 `THIRD_PARTY_NOTICES` 中署名 |
 | Unity 官方包（Input System / TextMeshPro / Splines / Recorder / Burst / Mathematics…） | 输入 / UI / 录制 | Unity Package License | 保持 |
-| ~~OPC UA .NET Stack~~ | （未使用） | GPL / RCL | ✅ **V1 已剔除** |
-| ~~NDI Runtime~~ | （未使用） | 专有，再分发须注册 | ✅ **V1 已剔除** |
-| 3D 模型 / 贴图资源（船体、船坞、环境、Crest-Examples） | 场景资源 | 见各资源原始许可 | ⚠ **需逐项核对**（未完成） |
+| **Newtonsoft.Json** | JSON 序列化 | **MIT** | 见 `THIRD_PARTY_NOTICES.md` |
 
 ---
 
@@ -190,9 +156,10 @@ Build_GCS_Compatible/
 ├── MonoBleedingEdge/                           Mono 运行时
 ├── gcs_target_ip.txt                           目标地面站 IP（可直接编辑）
 ├── GROUND_STATION_INTERFACE.md                 对接协议说明（权威）
+├── THIRD_PARTY_NOTICES.md                    第三方组件声明与 MIT/Apache-2.0 全文
+├── LICENSE-APACHE.txt                        Apache License 2.0 全文
 ├── JOINT_README.md                             与地面站的联合口径 R1–R10（**必读**）
 ├── README_V1.md                                本文件
-├── README.md                                   V0.5 预览版历史说明（保留）
 ├── dt_params.json / .bak                       参数存档（改过参数才有）
 └── ParamsExport/                               参数导出目录
 ```
@@ -209,9 +176,9 @@ Tools > Ground Station > Build Windows x64
 
 - **默认输出目录**：`Build_GCS_Compatible/`（工程根下）
 - **输出文件名**：跟随 `PlayerSettings.productName` ⇒ `USV_Sim2Real_Simulation_Platform.exe`
-  （⚠ 改了产品名，**新 exe 会以新名字出现，不会覆盖旧名字的 exe** —— 整理产物时记得清旧的）
-- 构建脚本会自动复制 `gcs_target_ip.txt` 与 `GROUND_STATION_INTERFACE.md` 到输出目录
-
+  
+- 构建脚本会自动复制 `\gcs_target_ip.txt`、`GROUND_STATION_INTERFACE.md`、`THIRD_PARTY_NOTICES.md` 与 `LICENSE-APACHE.txt` 到输出目录。
+- 对于`JOINT_README.md`、`README_V1.md` 等说明文档，也可以手动放到构建包`Build_GCS_Compatible/`中
 命令行批处理：
 
 ```
@@ -224,4 +191,8 @@ Tools > Ground Station > Build Windows x64
 
 ## 反馈
 
-问题与建议：**（待填）**
+问题与建议：
+
+在使用数字孪生平台的过程中，如果遇到任何问题，欢迎关注我们的微信公众号：Wilhao。
+如有开发相关的问题，可联系我们的技术开发人员，邮箱：2571217194@qq.com。
+感谢您的反馈与支持！

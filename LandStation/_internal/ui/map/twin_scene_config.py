@@ -21,12 +21,6 @@
 import json
 import os
 
-# 💡 打包(frozen)适配：定位 scenes.json 统一走 app_paths.resolve()
-#    开发态 = 工程根/ui/map/twin_maps/scenes.json（与原先行为一致）
-#    打包后 = 优先 exe 旁边的同名文件（换关卡不用重新打包），
-#             否则回退到随包内置副本
-import app_paths
-
 # 兜底：Unity 未提供 navigableRadiusMeters 时，按"半边长 − 1 m"估算。
 # 依据：边界几何体通常有约 2 m 厚度，内表面即半边长 − 1。
 _FALLBACK_MARGIN_M = 1.0
@@ -37,7 +31,10 @@ class TwinSceneConfig:
 
     def __init__(self, path: str = None):
         if path is None:
-            path = app_paths.resolve("ui", "map", "twin_maps", "scenes.json")
+            # 本文件位于 <root>/ui/map/twin_scene_config.py，
+            # 故其所在目录就是 ui/map，直接在其下找 twin_maps/。
+            here = os.path.dirname(os.path.abspath(__file__))
+            path = os.path.join(here, "twin_maps", "scenes.json")
         self.path = path
         self.levels = {}
         self.error = None
